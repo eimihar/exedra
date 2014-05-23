@@ -5,46 +5,28 @@
 ===============================
 AUTHOR 		: Eimihar El-Meruiy
 GITHUB 		: https://github.com/eimihar
-DESCRIPTION :
-- So basically this is all one file framework that contain 6 core classes, in order
-- to run the framework. Namely :
-- Apps, Controller, Model, View, Template, and Error.
-For [Apps] Class, there's a methods like :
-	- setGlobal
-	- getGlobal
-	- hasGlobal
-	- config
-	- saveConfig
-	- setCurrent
-	- setDefault
-	- getCurrent
-	- getDefault
-	- loadCoreLibrary
 
-For [Controller] Class, there's methods like :
-	- init
-	- load
-	- getCurrentController
-	- getCurrentMethod
-
-For [Model] Class :
-	- load
-
-For [View] Class :
-	- render
-
-For [Template] Class :
-	- showContent
-	- load
-
-For [Error] Class :
-	- set
-	- show()
-
-COMMENTS :
-- Yes it's very small and simple but enough to let you do everything, who cares about all those bunch of files tho. ;)
-- And I haven't diverge into awesome router part yet.
 */
+
+## require router as application routing dependency.
+require_once "Router.php";
+
+class Console
+{
+	public function execute($consoleArgs)
+	{
+		## remove loader.
+		array_shift($consoleArgs);
+
+		## firstparam
+		$firstparam	= $consoleArgs[0];
+
+		list($controller,$method)	= explode("@",$firstparam);
+
+		return response::parse(controller::init($controller,$method));
+	}
+}
+
 class Apps
 {
 	public static $global;
@@ -56,7 +38,7 @@ class Apps
 	private static $apps_other			= false;
 
 	## Initiate config
-	public function run($callback)
+	public function run($callback,$argv = null)
 	{
 		## start session.
 		session_start();
@@ -66,12 +48,12 @@ class Apps
 		$router	= new Router();
 
 		self::loadFunctionLibrary('helper');
-		self::register_autoload_path("core/libraries/Services");		## register services autoload path.
-		self::register_autoload_path("apps/_");							## register any class that loaded, without the use of model() class;
+		self::register_autoload_path(refine_path(dirname(__FILE__)."/Services"));		## register services autoload path.
+		self::register_autoload_path("apps/_");											## register any class that loaded, without the use of model() class;
 
 		self::setGlobal("router",$router); 						## save router instance
 		self::initConfig();										## initiate /apps folder config.
-		call_user_func_array($callback,Array($router));			## initiate application
+		echo !$argv?call_user_func_array($callback,Array($router)):console::execute($argv);			## initiate application or execute console.
 	}
 
 	public function initConfig($folder = "apps",$injectedConfig = null)
@@ -99,7 +81,8 @@ class Apps
 			$lastDirChar	= $dir[strlen($dir)-1];
 
 			$class	= ucfirst($class);
-			$dir	= trim($dir,"/").($lastDirChar == "_"?"":"/");
+			#$dir	= trim($dir,"/").($lastDirChar == "_"?"":"/"); # i find this to be trimming '/' from path, whichis not good for linux.
+			$dir	= rtrim($dir,"/").($lastDirChar == "_"?"":"/");
 			$path	= $dir.$class.".php";
 
 			## only for folder with _, in easy word, with model one.
@@ -126,7 +109,8 @@ class Apps
 			}
 			return;
 		}
-		$path	= "core/libraries/Functions/$file.php";
+		#$path	= "exedra/libraries/Functions/$file.php";
+		$path	= dirname(__FILE__)."/Functions/$file.php";
 
 		if(file_exists($path))
 		{
@@ -640,8 +624,10 @@ class Controller
 class Model
 {
 	static $loadedModel	= Array();
-	public function load($model,$new = false)
+	public function load($model)
 	{
+		$args	= func_get_args();
+
 		## if already got the model just reuse it.
 		if(isset(self::$loadedModel[$model]))
 		{
@@ -669,7 +655,8 @@ class Model
 			$classname	= "Model_".$classname;
 		}
 
-		if(!$new)
+		## got more than 1.
+		if(count($args) == 1)
 		{
 			if(!isset(self::$loadedModel[$model]))
 			{
@@ -683,7 +670,14 @@ class Model
 		}
 		else
 		{
-			$theModel	= new $classname();
+			## remove first param.
+			array_shift($args);
+
+			## create reflection obj.
+			$reflection	= new ReflectionClass($classname);
+
+			## instantiate model, with parameter. (through reflection.)
+			$theModel	= $reflection->newInstanceArgs($args);
 		}
 
 		return $theModel;
@@ -782,7 +776,8 @@ class View
 class Template
 {
 	## a flag whether a template has been loaded or not.
-	static $loaded = false;
+	static $loaded 		= false;
+	static $template	= null;
 
 	## Used in main template.
 	public function showContent()
@@ -804,13 +799,19 @@ class Template
 
 	}
 
+	public function set($flag)
+	{
+		self::$template	= $flag;
+	}
+
 	## to be use in View
 	public function load()
 	{
 		$apps		= apps::getCurrent();
 		$template	= controller::$instance[controller::getCurrentController()]->template;
-		$template	= isset($template)?$template:"default";
-
+		#$template	= self::$template === false?false:(isset($template)?$template:"default");
+		$template	= self::$template === false?(isset($template)?$template:false):(isset($template)?$template:"default");
+		
 		## set this flag to true. mean, can't run this function again.
 		self::$loaded	= true;
 
