@@ -12,6 +12,7 @@ class router
 	private $callbackListR		= Array();
 	private $storedCallbackR	= Array();
 	private $routeMatched		= false;
+	private $appsOtherFolder	= "apps_other";
 
 	#private $basePathListR		= Array();	## reused at dispatch.
 
@@ -120,11 +121,24 @@ class router
 					$path	= "apps/$apps/_structure/routes.php";
 				}
 				### other apps routes initiation.
-				else if(strpos($param_first,"apps_other:") === 0)
+				else if(strpos($param_first,$this->appsOtherFolder.":") === 0)
 				{
 					$apps			= substr($param_first,11,strlen($param_first));
-					$path_folder	= "apps_other/$apps";
-					$path			= "apps_other/$apps/_structure/routes.php";
+
+					if(strpos($apps, "path=") === 0)
+					{
+						$path_folder	= substr($apps, 5,strlen($apps));
+						$path			= $path_folder."/_structure/routes.php";
+
+						## apps name.
+							$r			= explode("/",$apps);
+						$apps			= array_pop($r);
+					}
+					else
+					{
+						$path_folder	= $this->appsOtherFolder."/$apps";
+						$path			= $this->appsOtherFolder."/$apps/_structure/routes.php";
+					}
 
 					## save into apps_other;
 					$this->apps_other['name']	= $apps;
