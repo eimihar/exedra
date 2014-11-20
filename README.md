@@ -1,5 +1,7 @@
 Exédra
 ======
+This version is no longer maintained. Please continue with Exedra2 at http://github.com/rosengate/exedra.
+Thank you.
 
 A fast and simple HMVC framework. Written ground up just to satisfy a simple to complicated application design (hopefully)
 
